@@ -1,0 +1,14 @@
+clickhouse-connect>=0.10.0
+loguru
+
+python-dotenv
+pydantic>=2.0.0
+
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+celery
+celery-singleton>=0.3.1
+redis
+
+pandas

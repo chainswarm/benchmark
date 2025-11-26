@@ -1,0 +1,58 @@
+{
+    "_comment": "Analytics Pipeline Beat Schedule - Analytics tasks only",
+    
+    "daily-analytics-pipeline-torus": {
+        "task": "packages.jobs.tasks.daily_analytics_pipeline_task.daily_analytics_pipeline_task",
+        "schedule": "0 2 * * *",
+        "args": ["torus", 1]
+    },
+
+    "detect-structural-patterns-1d-hourly-torus": {
+        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+        "schedule": {
+            "crontab": {
+                "minute": "5",
+                "hour": "*/1"
+            }
+        },
+        "args": ["torus", 1, "{{ today }}"],
+        "description": "Hourly near-realtime pattern detection with 1-day window for immediate threat detection"
+    },
+
+    "detect-structural-patterns-7d-6hourly-torus": {
+        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+        "schedule": {
+            "crontab": {
+                "minute": "15",
+                "hour": "*/6"
+            }
+        },
+        "args": ["torus", 7, "{{ today }}"],
+        "description": "6-hourly short-term pattern detection with 7-day window for emerging threats"
+    },
+
+    "detect-structural-patterns-30d-daily-torus": {
+        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+        "schedule": {
+            "crontab": {
+                "minute": "30",
+                "hour": "2"
+            }
+        },
+        "args": ["torus", 30, "{{ today }}"],
+        "description": "Daily medium-term pattern detection with 30-day window for behavioral analysis"
+    },
+
+    "detect-structural-patterns-90d-weekly-torus": {
+        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+        "schedule": {
+            "crontab": {
+                "minute": "0",
+                "hour": "3",
+                "day_of_week": "0"
+            }
+        },
+        "args": ["torus", 90, "{{ today }}"],
+        "description": "Weekly long-term pattern detection with 90-day window for sophisticated schemes"
+    }
+}

@@ -1,0 +1,130 @@
+services:
+  benchmark-clickhouse:
+    container_name: benchmark-clickhouse
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8823:8123"
+      - "9400:9000"
+      - "9409:9009"
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=password1234
+    volumes:
+      - benchmark-clickhouse-data:/var/lib/clickhouse
+      - benchmark-clickhouse-logs:/var/log/clickhouse-server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user=default", "--password=password1234", "--query=SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  benchmark-redis:
+    image: redis:7-alpine
+    container_name: benchmark-redis
+    restart: unless-stopped
+    ports:
+      - "6579:6379"
+    volumes:
+      - benchmark-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  benchmark-celery-worker:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    container_name: benchmark-celery-worker
+    restart: unless-stopped
+    command: celery -A packages.jobs.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - CELERY_BROKER_URL=redis://benchmark-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://benchmark-redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - VALIDATOR_CH_HOST=benchmark-clickhouse
+      - VALIDATOR_CH_PORT=9000
+      - VALIDATOR_CH_DATABASE=default
+      - TORUS_DATA_PIPELINE_CH_HOST=${TORUS_DATA_PIPELINE_CH_HOST:-torus-pipeline-clickhouse}
+      - TORUS_DATA_PIPELINE_CH_PORT=${TORUS_DATA_PIPELINE_CH_PORT:-9000}
+      - TORUS_DATA_PIPELINE_CH_DATABASE=${TORUS_DATA_PIPELINE_CH_DATABASE:-pipeline}
+      - BITTENSOR_DATA_PIPELINE_CH_HOST=${BITTENSOR_DATA_PIPELINE_CH_HOST:-bittensor-pipeline-clickhouse}
+      - BITTENSOR_DATA_PIPELINE_CH_PORT=${BITTENSOR_DATA_PIPELINE_CH_PORT:-9000}
+      - BITTENSOR_DATA_PIPELINE_CH_DATABASE=${BITTENSOR_DATA_PIPELINE_CH_DATABASE:-pipeline}
+      - BENCHMARK_REPOS_PATH=/var/benchmark/repos
+      - BENCHMARK_DATA_PATH=/var/benchmark/data
+      - BENCHMARK_MAX_EXECUTION_TIME=3600
+      - BENCHMARK_EPOCH_DAYS=7
+      - BENCHMARK_MEMORY_LIMIT=32g
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - SYNTHETICS_S3_ENDPOINT=${SYNTHETICS_S3_ENDPOINT:-}
+      - SYNTHETICS_S3_BUCKET=${SYNTHETICS_S3_BUCKET:-}
+      - SYNTHETICS_S3_ACCESS_KEY=${SYNTHETICS_S3_ACCESS_KEY:-}
+      - SYNTHETICS_S3_SECRET_KEY=${SYNTHETICS_S3_SECRET_KEY:-}
+      - SYNTHETICS_S3_REGION=${SYNTHETICS_S3_REGION:-us-east-1}
+    depends_on:
+      benchmark-redis:
+        condition: service_healthy
+      benchmark-clickhouse:
+        condition: service_healthy
+    volumes:
+      - ../packages:/app/packages
+      - ../scripts:/app/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+      - benchmark-repos:/var/benchmark/repos
+      - benchmark-data:/var/benchmark/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  benchmark-celery-beat:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    container_name: benchmark-celery-beat
+    restart: unless-stopped
+    command: celery -A packages.jobs.celery_app beat --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://benchmark-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://benchmark-redis:6379/0
+      - PYTHONUNBUFFERED=1
+      - VALIDATOR_CH_HOST=benchmark-clickhouse
+      - VALIDATOR_CH_PORT=9000
+      - VALIDATOR_CH_DATABASE=default
+    depends_on:
+      benchmark-redis:
+        condition: service_healthy
+    volumes:
+      - ../packages:/app/packages
+      - ../scripts:/app/scripts
+      - benchmark-celery-beat-data:/app/celerybeat-schedule
+
+volumes:
+  benchmark-redis-data:
+    name: benchmark-redis-data
+
+  benchmark-celery-beat-data:
+    name: benchmark-celery-beat-data
+
+  benchmark-clickhouse-data:
+    name: benchmark-clickhouse-data
+
+  benchmark-clickhouse-logs:
+    name: benchmark-clickhouse-logs
+
+  benchmark-repos:
+    name: benchmark-repos
+
+  benchmark-data:
+    name: benchmark-data
+
+networks:
+  default:
+    name: benchmark-network
