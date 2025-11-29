@@ -12,14 +12,29 @@ from packages.benchmark.models.results import (
     RecallMetrics,
     NoveltyResult,
 )
+from packages.benchmark.models.analysis import (
+    AnalysisStatus,
+    AnalysisFailureReason,
+    FileAnalysisResult,
+    AddressScanResult,
+    LLMAnalysisResult,
+    RepositoryAnalysisResult,
+    CloneResult,
+    BuildResult,
+)
 
 __all__ = [
+    # Miner models
     'Miner',
     'MinerDatabase',
     'MinerStatus',
     'ImageType',
+    
+    # Epoch models
     'BenchmarkEpoch',
     'EpochStatus',
+    
+    # Results models
     'AnalyticsDailyRun',
     'MLDailyRun',
     'AnalyticsBaselineRun',
@@ -30,4 +45,14 @@ __all__ = [
     'ContainerResult',
     'RecallMetrics',
     'NoveltyResult',
+    
+    # Analysis models
+    'AnalysisStatus',
+    'AnalysisFailureReason',
+    'FileAnalysisResult',
+    'AddressScanResult',
+    'LLMAnalysisResult',
+    'RepositoryAnalysisResult',
+    'CloneResult',
+    'BuildResult',
 ]

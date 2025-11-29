@@ -1,12 +1,9 @@
-from .base_task import BaseDataPipelineTask
-from .task_models import (
-    BaseTaskContext,
-    PriceTaskResult,
-    BaseTaskResult,
-)
+from chainswarm_core.jobs import BaseTask, BaseTaskContext, BaseTaskResult
+from .task_models import BenchmarkTaskContext
 
 __all__ = [
-    'BaseDataPipelineTask',
+    'BaseTask',
     'BaseTaskContext',
-    'PriceTaskResult',
+    'BaseTaskResult',
+    'BenchmarkTaskContext',
 ]

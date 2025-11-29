@@ -1,7 +1,8 @@
 import os
 import time
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import docker
 from docker.errors import BuildError, ContainerError, ImageNotFound
@@ -16,18 +17,38 @@ class DockerManager:
         self.max_execution_time = int(os.environ.get('BENCHMARK_MAX_EXECUTION_TIME', 3600))
         self.memory_limit = os.environ.get('BENCHMARK_MEMORY_LIMIT', '32g')
 
-    def build_image(self, repo_path: Path, image_type: str, hotkey: str) -> str:
-        image_tag = f"{image_type}_{hotkey}:latest"
+    def build_image(self, repo_path: Path, image_type: str, hotkey: str, commit_hash: str) -> str:
+        """Build a Docker image with versioned tagging.
+        
+        Args:
+            repo_path: Path to the repository containing the Dockerfile
+            image_type: Type of image (e.g., 'analytics', 'ml')
+            hotkey: Miner's hotkey identifier
+            commit_hash: Short git commit hash (7 chars)
+            
+        Returns:
+            The primary versioned image tag
+        """
+        build_date = datetime.utcnow().strftime('%Y%m%d')
+        
+        # All components lowercase for Docker compatibility
+        image_name = f"{image_type.lower()}-pipeline/{hotkey.lower()}"
+        version_tag = f"{commit_hash.lower()}-{build_date}"
+        
+        primary_tag = f"{image_name}:{version_tag}"
+        latest_tag = f"{image_name}:latest"
         
         logger.info("Building Docker image", extra={
-            "image_tag": image_tag,
+            "primary_tag": primary_tag,
+            "latest_tag": latest_tag,
             "repo_path": str(repo_path)
         })
         
         try:
             image, build_logs = self.client.images.build(
                 path=str(repo_path),
-                tag=image_tag,
+                dockerfile="ops/Dockerfile",
+                tag=primary_tag,
                 rm=True,
                 forcerm=True,
                 pull=True
@@ -37,8 +58,14 @@ class DockerManager:
                 if 'stream' in log:
                     logger.debug(log['stream'].strip())
             
-            logger.info("Docker image built successfully", extra={"image_tag": image_tag})
-            return image_tag
+            # Also tag as latest
+            image.tag(image_name, tag='latest')
+            
+            logger.info("Docker image built successfully", extra={
+                "primary_tag": primary_tag,
+                "latest_tag": latest_tag
+            })
+            return primary_tag
             
         except BuildError as e:
             logger.error("Docker build failed", extra={"error": str(e)})
@@ -143,14 +170,25 @@ class DockerManager:
         except ImageNotFound:
             logger.warning("Image not found for removal", extra={"image_tag": image_tag})
 
-    def list_benchmark_images(self, image_type: Optional[str] = None) -> list:
+    def list_benchmark_images(self, image_type: Optional[str] = None) -> List[str]:
+        """List all benchmark images, optionally filtered by type.
+        
+        Args:
+            image_type: Filter by image type ('analytics' or 'ml'). None for all.
+            
+        Returns:
+            List of image tags matching the criteria
+        """
         images = self.client.images.list()
         benchmark_images = []
         
         for image in images:
             for tag in image.tags:
-                if tag.startswith('analytics_') or tag.startswith('ml_'):
-                    if image_type is None or tag.startswith(f"{image_type}_"):
+                # Match new format: {type}-pipeline/{hotkey}:{version}
+                if '-pipeline/' in tag:
+                    if image_type is None:
+                        benchmark_images.append(tag)
+                    elif tag.startswith(f"{image_type.lower()}-pipeline/"):
                         benchmark_images.append(tag)
         
         return benchmark_images

@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.10 (subnet)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13.5 WSL (Ubuntu-22.04): (/home/aphex5/.virtualenvs/chain-synthetics/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13.5 WSL (Ubuntu-22.04): (/home/aphex5/.virtualenvs/benchmark/bin/python)" project-jdk-type="Python SDK" />
 </project>

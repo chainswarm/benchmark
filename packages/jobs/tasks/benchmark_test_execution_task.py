@@ -4,15 +4,16 @@ from uuid import UUID
 from celery_singleton import Singleton
 from loguru import logger
 
+from chainswarm_core.jobs import BaseTask
+
 from packages.benchmark.managers.dataset_manager import DatasetManager
 from packages.benchmark.managers.docker_manager import DockerManager
 from packages.benchmark.models.miner import ImageType
 from packages.benchmark.models.results import RunStatus
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.jobs.celery_app import celery_app
 
 
-class BenchmarkTestExecutionTask(BaseDataPipelineTask, Singleton):
+class BenchmarkTestExecutionTask(BaseTask, Singleton):
 
     def execute_task(self, context: dict):
         epoch_id = UUID(context['epoch_id'])

@@ -5,14 +5,15 @@ from uuid import UUID
 from celery_singleton import Singleton
 from loguru import logger
 
+from chainswarm_core.jobs import BaseTask
+
 from packages.benchmark.managers.scoring_manager import ScoringManager
 from packages.benchmark.models.miner import ImageType
 from packages.benchmark.models.results import AnalyticsDailyRun, BenchmarkScore, MLDailyRun
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.jobs.celery_app import celery_app
 
 
-class BenchmarkScoringTask(BaseDataPipelineTask, Singleton):
+class BenchmarkScoringTask(BaseTask, Singleton):
 
     def execute_task(self, context: dict):
         epoch_id = UUID(context['epoch_id'])

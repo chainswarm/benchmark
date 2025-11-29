@@ -29,11 +29,11 @@ def create_database(connection_params):
 
     client.command(f"CREATE DATABASE IF NOT EXISTS {connection_params['database']}")
 
-def get_connection_params(hotkey: str = 'default'):
+def get_connection_params(database: str = 'default'):
     connection_params = {
         "host": os.getenv(f"CLICKHOUSE_HOST", "localhost"),
         "port": os.getenv(f"CLICKHOUSE_PORT", "8823"),
-        "database": f"benchmark_{hotkey}",
+        "database": database,
         "user": os.getenv(f"CLICKHOUSE_USER", "default"),
         "password": os.getenv(f"CLICKHOUSE_PASSWORD", f"password1234"),
         "max_execution_time": int(os.getenv(f"CLICKHOUSE_MAX_EXECUTION_TIME", "1800")),
@@ -157,8 +157,6 @@ class MigrateSchema:
             "benchmark_miner_registry.sql",
             "benchmark_miner_databases.sql",
             "benchmark_epochs.sql",
-
-            # Daily run tables (analytics and ML separate)
             "benchmark_analytics_daily_runs.sql",
             "benchmark_ml_daily_runs.sql",
             "benchmark_analytics_baseline_runs.sql",
@@ -174,11 +172,6 @@ class MigrateSchema:
                 logger.warning(f"Benchmark schema {schema_file} not found, skipping")
 
     def run_miner_schema_migrations(self, image_type: str = 'analytics'):
-        """Execute miner-specific schema migrations for the miner's dedicated database.
-        
-        Args:
-            image_type: Either 'analytics' or 'ml' to determine which schema to apply
-        """
         if image_type == 'analytics':
             schema_file = "miner_analytics_schema.sql"
         else:

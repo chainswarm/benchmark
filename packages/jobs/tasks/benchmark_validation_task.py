@@ -4,15 +4,16 @@ from uuid import UUID
 from celery_singleton import Singleton
 from loguru import logger
 
+from chainswarm_core.jobs import BaseTask
+
 from packages.benchmark.managers.dataset_manager import DatasetManager
 from packages.benchmark.managers.validation_manager import ValidationManager
 from packages.benchmark.models.miner import ImageType
 from packages.benchmark.models.results import RunStatus
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.jobs.celery_app import celery_app
 
 
-class BenchmarkValidationTask(BaseDataPipelineTask, Singleton):
+class BenchmarkValidationTask(BaseTask, Singleton):
 
     def execute_task(self, context: dict):
         run_id = UUID(context['run_id'])

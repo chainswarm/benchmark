@@ -1,58 +1,41 @@
 {
-    "_comment": "Analytics Pipeline Beat Schedule - Analytics tasks only",
+    "_comment": "Benchmark System Beat Schedule",
     
-    "daily-analytics-pipeline-torus": {
-        "task": "packages.jobs.tasks.daily_analytics_pipeline_task.daily_analytics_pipeline_task",
-        "schedule": "0 2 * * *",
-        "args": ["torus", 1]
-    },
-
-    "detect-structural-patterns-1d-hourly-torus": {
-        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+    "benchmark-initialization": {
+        "task": "packages.jobs.tasks.benchmark_initialization_task.benchmark_initialization_task",
         "schedule": {
             "crontab": {
-                "minute": "5",
-                "hour": "*/1"
+                "minute": "0",
+                "hour": "0",
+                "day_of_month": "1"
             }
         },
-        "args": ["torus", 1, "{{ today }}"],
-        "description": "Hourly near-realtime pattern detection with 1-day window for immediate threat detection"
+        "description": "Monthly initialization/validation of benchmark schema tables"
     },
-
-    "detect-structural-patterns-7d-6hourly-torus": {
-        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+    
+    "benchmark-daily-analytics-orchestrator": {
+        "task": "packages.jobs.tasks.benchmark_orchestrator_task.benchmark_orchestrator_task",
         "schedule": {
             "crontab": {
-                "minute": "15",
-                "hour": "*/6"
+                "minute": "0",
+                "hour": "1",
+                "day_of_week": "*"
             }
         },
-        "args": ["torus", 7, "{{ today }}"],
-        "description": "6-hourly short-term pattern detection with 7-day window for emerging threats"
+        "args": ["analytics", "{{ today }}"],
+        "description": "Daily orchestrator for analytics miners"
     },
-
-    "detect-structural-patterns-30d-daily-torus": {
-        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
-        "schedule": {
-            "crontab": {
-                "minute": "30",
-                "hour": "2"
-            }
-        },
-        "args": ["torus", 30, "{{ today }}"],
-        "description": "Daily medium-term pattern detection with 30-day window for behavioral analysis"
-    },
-
-    "detect-structural-patterns-90d-weekly-torus": {
-        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+    
+    "benchmark-daily-ml-orchestrator": {
+        "task": "packages.jobs.tasks.benchmark_orchestrator_task.benchmark_orchestrator_task",
         "schedule": {
             "crontab": {
                 "minute": "0",
                 "hour": "3",
-                "day_of_week": "0"
+                "day_of_week": "*"
             }
         },
-        "args": ["torus", 90, "{{ today }}"],
-        "description": "Weekly long-term pattern detection with 90-day window for sophisticated schemes"
+        "args": ["ml", "{{ today }}"],
+        "description": "Daily orchestrator for ML miners"
     }
 }

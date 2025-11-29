@@ -1,3 +1,5 @@
+chainswarm-core>=0.1.8
+
 clickhouse-connect>=0.10.0
 loguru
 
@@ -12,3 +14,10 @@ celery-singleton>=0.3.1
 redis
 
 pandas
+scikit-learn>=1.0.0
+
+# Docker SDK for Python
+docker>=6.0.0
+
+# HTTP client for OpenRouter API
+httpx>=0.24.0

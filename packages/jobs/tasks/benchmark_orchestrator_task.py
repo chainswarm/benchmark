@@ -32,7 +32,6 @@ class BenchmarkOrchestratorTask(BaseDataPipelineTask, Singleton):
         
         miner_repo = MinerRegistryRepository()
         epoch_repo = BenchmarkEpochRepository()
-        
         repo_manager = RepositoryManager()
         docker_manager = DockerManager()
         dataset_manager = DatasetManager()

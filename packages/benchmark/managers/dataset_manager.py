@@ -30,8 +30,73 @@ class DatasetManager:
         self.validator_host = os.environ['VALIDATOR_CH_HOST']
         self.validator_port = int(os.environ['VALIDATOR_CH_PORT'])
 
+    def get_dataset_path(self, network: str, processing_date: str, window_days: int) -> Path:
+        """Get the local path for a dataset without downloading."""
+        return self.data_base_path / network / processing_date / str(window_days)
+
+    def check_dataset_availability(self, network: str, processing_date: str, window_days: int) -> dict:
+        """
+        Check if a dataset is available locally and/or in S3.
+        
+        Args:
+            network: Network name (e.g., 'torus', 'bittensor')
+            processing_date: Date string (YYYY-MM-DD)
+            window_days: Window days (30 or 90)
+            
+        Returns:
+            Dict with:
+                - local_exists: bool
+                - local_complete: bool
+                - s3_exists: bool
+                - has_ground_truth: bool
+                - path: str (local path)
+        """
+        dataset_path = self.get_dataset_path(network, processing_date, window_days)
+        
+        local_exists = dataset_path.exists()
+        local_complete = local_exists and self._is_dataset_complete(dataset_path)
+        has_ground_truth = local_exists and (dataset_path / 'ground_truth.parquet').exists()
+        
+        s3_exists = False
+        try:
+            s3_exists = self._check_s3_exists(network, processing_date, window_days)
+        except Exception as e:
+            logger.warning("Failed to check S3 availability", extra={
+                "network": network,
+                "processing_date": processing_date,
+                "window_days": window_days,
+                "error": str(e)
+            })
+        
+        return {
+            'local_exists': local_complete,
+            'local_complete': local_complete,
+            's3_exists': s3_exists,
+            'has_ground_truth': has_ground_truth,
+            'path': str(dataset_path)
+        }
+
+    def _check_s3_exists(self, network: str, processing_date: str, window_days: int) -> bool:
+        """Check if dataset exists in S3."""
+        import boto3
+        
+        s3_bucket = os.environ['SYNTHETICS_S3_BUCKET']
+        s3_prefix = f"snapshots/{network}/{processing_date}/{window_days}"
+        
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=os.environ.get('SYNTHETICS_S3_ENDPOINT'),
+            aws_access_key_id=os.environ['SYNTHETICS_S3_ACCESS_KEY'],
+            aws_secret_access_key=os.environ['SYNTHETICS_S3_SECRET_KEY'],
+            region_name=os.environ.get('SYNTHETICS_S3_REGION', 'us-east-1')
+        )
+        
+        response = s3_client.list_objects_v2(Bucket=s3_bucket, Prefix=s3_prefix, MaxKeys=1)
+        
+        return 'Contents' in response and len(response['Contents']) > 0
+
     def fetch_dataset(self, network: str, processing_date: str, window_days: int) -> Path:
-        dataset_path = self.data_base_path / network / processing_date / str(window_days)
+        dataset_path = self.get_dataset_path(network, processing_date, window_days)
         
         if dataset_path.exists() and self._is_dataset_complete(dataset_path):
             logger.info("Dataset already exists", extra={

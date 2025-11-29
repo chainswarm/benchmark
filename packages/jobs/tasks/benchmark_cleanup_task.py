@@ -1,16 +1,17 @@
 from uuid import UUID
-
 from celery_singleton import Singleton
 from loguru import logger
+
+from chainswarm_core.jobs import BaseTask
 
 from packages.benchmark.managers.docker_manager import DockerManager
 from packages.benchmark.managers.repository_manager import RepositoryManager
 from packages.benchmark.models.miner import ImageType
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.jobs.celery_app import celery_app
+from packages.storage.repositories.benchmark_epoch_repository import BenchmarkEpochRepository
 
 
-class BenchmarkCleanupTask(BaseDataPipelineTask, Singleton):
+class BenchmarkCleanupTask(BaseTask, Singleton):
 
     def execute_task(self, context: dict):
         epoch_id = UUID(context['epoch_id'])
@@ -22,8 +23,7 @@ class BenchmarkCleanupTask(BaseDataPipelineTask, Singleton):
             "hotkey": hotkey,
             "image_type": image_type.value
         })
-        
-        from packages.storage.repositories.benchmark_epoch_repository import BenchmarkEpochRepository
+
         
         epoch_repo = BenchmarkEpochRepository()
         docker_manager = DockerManager()

@@ -4,8 +4,8 @@ services:
     image: clickhouse/clickhouse-server:latest
     ports:
       - "8823:8123"
-      - "9400:9000"
-      - "9409:9009"
+      - "9800:9000"
+      - "9809:9009"
     environment:
       - CLICKHOUSE_DB=default
       - CLICKHOUSE_USER=default
