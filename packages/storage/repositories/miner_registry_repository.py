@@ -1,24 +1,17 @@
-import os
 from datetime import datetime
 from typing import List
 
-from clickhouse_connect import get_client
 from clickhouse_connect.driver import Client
 
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core.observability import log_errors
+
 from packages.benchmark.models.miner import ImageType, Miner, MinerStatus
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.utils.decorators import log_errors
 
 
 class MinerRegistryRepository(BaseRepository):
     
-    def __init__(self, client: Client = None):
-        if client is None:
-            client = get_client(
-                host=os.environ['VALIDATOR_CH_HOST'],
-                port=int(os.environ['VALIDATOR_CH_PORT']),
-                database='default'
-            )
+    def __init__(self, client: Client):
         super().__init__(client)
 
     @classmethod
@@ -32,9 +25,9 @@ class MinerRegistryRepository(BaseRepository):
     @log_errors
     def get_active_miners(self, image_type: ImageType) -> List[Miner]:
         query = f"""
-        SELECT hotkey, image_type, github_repository, registered_at, 
+        SELECT hotkey, image_type, github_repository, registered_at,
                last_updated_at, status, validation_error
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE status = 'active' AND image_type = %(image_type)s
         ORDER BY registered_at
         """
@@ -43,14 +36,15 @@ class MinerRegistryRepository(BaseRepository):
         
         miners = []
         for row in result.result_rows:
+            data = row_to_dict(row, result.column_names)
             miners.append(Miner(
-                hotkey=row[0],
-                image_type=ImageType(row[1]),
-                github_repository=row[2],
-                registered_at=row[3],
-                last_updated_at=row[4],
-                status=MinerStatus(row[5]),
-                validation_error=row[6]
+                hotkey=data['hotkey'],
+                image_type=ImageType(data['image_type']),
+                github_repository=data['github_repository'],
+                registered_at=data['registered_at'],
+                last_updated_at=data['last_updated_at'],
+                status=MinerStatus(data['status']),
+                validation_error=data['validation_error']
             ))
         
         return miners
@@ -59,32 +53,33 @@ class MinerRegistryRepository(BaseRepository):
     def get_all_miners(self, image_type: ImageType = None) -> List[Miner]:
         if image_type:
             query = f"""
-            SELECT hotkey, image_type, github_repository, registered_at, 
+            SELECT hotkey, image_type, github_repository, registered_at,
                    last_updated_at, status, validation_error
-            FROM {self.table_name()}
+            FROM {self.table_name()} FINAL
             WHERE image_type = %(image_type)s
             ORDER BY registered_at
             """
             result = self.client.query(query, parameters={'image_type': image_type.value})
         else:
             query = f"""
-            SELECT hotkey, image_type, github_repository, registered_at, 
+            SELECT hotkey, image_type, github_repository, registered_at,
                    last_updated_at, status, validation_error
-            FROM {self.table_name()}
+            FROM {self.table_name()} FINAL
             ORDER BY registered_at
             """
             result = self.client.query(query)
         
         miners = []
         for row in result.result_rows:
+            data = row_to_dict(row, result.column_names)
             miners.append(Miner(
-                hotkey=row[0],
-                image_type=ImageType(row[1]),
-                github_repository=row[2],
-                registered_at=row[3],
-                last_updated_at=row[4],
-                status=MinerStatus(row[5]),
-                validation_error=row[6]
+                hotkey=data['hotkey'],
+                image_type=ImageType(data['image_type']),
+                github_repository=data['github_repository'],
+                registered_at=data['registered_at'],
+                last_updated_at=data['last_updated_at'],
+                status=MinerStatus(data['status']),
+                validation_error=data['validation_error']
             ))
         
         return miners
@@ -92,9 +87,9 @@ class MinerRegistryRepository(BaseRepository):
     @log_errors
     def get_miner(self, hotkey: str, image_type: ImageType) -> Miner:
         query = f"""
-        SELECT hotkey, image_type, github_repository, registered_at, 
+        SELECT hotkey, image_type, github_repository, registered_at,
                last_updated_at, status, validation_error
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         LIMIT 1
         """
@@ -108,14 +103,15 @@ class MinerRegistryRepository(BaseRepository):
             raise ValueError(f"Miner not found: {hotkey}")
         
         row = result.result_rows[0]
+        data = row_to_dict(row, result.column_names)
         return Miner(
-            hotkey=row[0],
-            image_type=ImageType(row[1]),
-            github_repository=row[2],
-            registered_at=row[3],
-            last_updated_at=row[4],
-            status=MinerStatus(row[5]),
-            validation_error=row[6]
+            hotkey=data['hotkey'],
+            image_type=ImageType(data['image_type']),
+            github_repository=data['github_repository'],
+            registered_at=data['registered_at'],
+            last_updated_at=data['last_updated_at'],
+            status=MinerStatus(data['status']),
+            validation_error=data['validation_error']
         )
 
     @log_errors
@@ -148,11 +144,11 @@ class MinerRegistryRepository(BaseRepository):
         now = datetime.now()
         
         query = f"""
-        INSERT INTO {self.table_name()} 
+        INSERT INTO {self.table_name()}
         (hotkey, image_type, github_repository, registered_at, last_updated_at, status, validation_error)
-        SELECT hotkey, image_type, github_repository, registered_at, 
+        SELECT hotkey, image_type, github_repository, registered_at,
                %(last_updated_at)s, %(status)s, %(validation_error)s
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         LIMIT 1
         """

@@ -1,24 +1,17 @@
-import os
 from datetime import datetime
 from typing import List
 
-from clickhouse_connect import get_client
 from clickhouse_connect.driver import Client
 
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core.observability import log_errors
+
 from packages.benchmark.models.miner import ImageType, MinerDatabase
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.utils.decorators import log_errors
 
 
 class MinerDatabaseRepository(BaseRepository):
     
-    def __init__(self, client: Client = None):
-        if client is None:
-            client = get_client(
-                host=os.environ['VALIDATOR_CH_HOST'],
-                port=int(os.environ['VALIDATOR_CH_PORT']),
-                database='default'
-            )
+    def __init__(self, client: Client):
         super().__init__(client)
 
     @classmethod
@@ -33,7 +26,7 @@ class MinerDatabaseRepository(BaseRepository):
     def get_database(self, hotkey: str, image_type: ImageType) -> MinerDatabase:
         query = f"""
         SELECT hotkey, image_type, database_name, created_at, last_used_at, status
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         ORDER BY last_used_at DESC
         LIMIT 1
@@ -48,20 +41,21 @@ class MinerDatabaseRepository(BaseRepository):
             raise ValueError(f"Database not found for miner: {hotkey}")
         
         row = result.result_rows[0]
+        data = row_to_dict(row, result.column_names)
         return MinerDatabase(
-            hotkey=row[0],
-            image_type=ImageType(row[1]),
-            database_name=row[2],
-            created_at=row[3],
-            last_used_at=row[4],
-            status=row[5]
+            hotkey=data['hotkey'],
+            image_type=ImageType(data['image_type']),
+            database_name=data['database_name'],
+            created_at=data['created_at'],
+            last_used_at=data['last_used_at'],
+            status=data['status']
         )
 
     @log_errors
     def get_active_databases(self) -> List[MinerDatabase]:
         query = f"""
         SELECT hotkey, image_type, database_name, created_at, last_used_at, status
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE status = 'active'
         ORDER BY last_used_at DESC
         """
@@ -70,13 +64,14 @@ class MinerDatabaseRepository(BaseRepository):
         
         databases = []
         for row in result.result_rows:
+            data = row_to_dict(row, result.column_names)
             databases.append(MinerDatabase(
-                hotkey=row[0],
-                image_type=ImageType(row[1]),
-                database_name=row[2],
-                created_at=row[3],
-                last_used_at=row[4],
-                status=row[5]
+                hotkey=data['hotkey'],
+                image_type=ImageType(data['image_type']),
+                database_name=data['database_name'],
+                created_at=data['created_at'],
+                last_used_at=data['last_used_at'],
+                status=data['status']
             ))
         
         return databases
@@ -114,10 +109,10 @@ class MinerDatabaseRepository(BaseRepository):
         now = datetime.now()
         
         query = f"""
-        INSERT INTO {self.table_name()} 
+        INSERT INTO {self.table_name()}
         (hotkey, image_type, database_name, created_at, last_used_at, status)
         SELECT hotkey, image_type, database_name, created_at, %(last_used_at)s, %(status)s
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         ORDER BY last_used_at DESC
         LIMIT 1
@@ -135,10 +130,10 @@ class MinerDatabaseRepository(BaseRepository):
         now = datetime.now()
         
         query = f"""
-        INSERT INTO {self.table_name()} 
+        INSERT INTO {self.table_name()}
         (hotkey, image_type, database_name, created_at, last_used_at, status)
         SELECT hotkey, image_type, database_name, created_at, %(last_used_at)s, status
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         ORDER BY last_used_at DESC
         LIMIT 1

@@ -1,4 +1,4 @@
-chainswarm-core>=0.1.8
+chainswarm-core>=0.1.13
 
 clickhouse-connect>=0.10.0
 loguru

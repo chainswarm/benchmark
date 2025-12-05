@@ -1,10 +1,11 @@
-import os
 from datetime import date, datetime
 from typing import List, Union
 from uuid import UUID, uuid4
 
-from clickhouse_connect import get_client
 from clickhouse_connect.driver import Client
+
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core.observability import log_errors
 
 from packages.benchmark.models.miner import ImageType
 from packages.benchmark.models.results import (
@@ -13,19 +14,11 @@ from packages.benchmark.models.results import (
     MLDailyRun,
     RunStatus,
 )
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.utils.decorators import log_errors
 
 
 class BenchmarkResultsRepository(BaseRepository):
     
-    def __init__(self, client: Client = None):
-        if client is None:
-            client = get_client(
-                host=os.environ['VALIDATOR_CH_HOST'],
-                port=int(os.environ['VALIDATOR_CH_PORT']),
-                database='default'
-            )
+    def __init__(self, client: Client):
         super().__init__(client)
 
     @log_errors
@@ -226,7 +219,7 @@ class BenchmarkResultsRepository(BaseRepository):
                novelty_addresses_valid, novelty_connections_valid,
                all_addresses_exist, all_connections_exist, data_correctness_passed,
                status, error_message, created_at
-        FROM benchmark_analytics_daily_runs
+        FROM benchmark_analytics_daily_runs FINAL
         WHERE epoch_id = %(epoch_id)s
         ORDER BY test_date, network
         """
@@ -235,30 +228,31 @@ class BenchmarkResultsRepository(BaseRepository):
         
         runs = []
         for row in result.result_rows:
+            data = row_to_dict(row, result.column_names)
             runs.append(AnalyticsDailyRun(
-                run_id=UUID(row[0]) if isinstance(row[0], str) else row[0],
-                epoch_id=UUID(row[1]) if isinstance(row[1], str) else row[1],
-                hotkey=row[2],
-                test_date=row[3],
-                network=row[4],
-                window_days=row[5],
-                processing_date=row[6],
-                execution_time_seconds=row[7],
-                container_exit_code=row[8],
-                gpu_memory_peak_mb=row[9],
-                synthetic_patterns_expected=row[10],
-                synthetic_patterns_found=row[11],
-                synthetic_patterns_recall=row[12],
-                novelty_patterns_reported=row[13],
-                novelty_patterns_validated=row[14],
-                novelty_addresses_valid=row[15],
-                novelty_connections_valid=row[16],
-                all_addresses_exist=row[17],
-                all_connections_exist=row[18],
-                data_correctness_passed=row[19],
-                status=RunStatus(row[20]),
-                error_message=row[21],
-                created_at=row[22]
+                run_id=UUID(data['run_id']) if isinstance(data['run_id'], str) else data['run_id'],
+                epoch_id=UUID(data['epoch_id']) if isinstance(data['epoch_id'], str) else data['epoch_id'],
+                hotkey=data['hotkey'],
+                test_date=data['test_date'],
+                network=data['network'],
+                window_days=data['window_days'],
+                processing_date=data['processing_date'],
+                execution_time_seconds=data['execution_time_seconds'],
+                container_exit_code=data['container_exit_code'],
+                gpu_memory_peak_mb=data['gpu_memory_peak_mb'],
+                synthetic_patterns_expected=data['synthetic_patterns_expected'],
+                synthetic_patterns_found=data['synthetic_patterns_found'],
+                synthetic_patterns_recall=data['synthetic_patterns_recall'],
+                novelty_patterns_reported=data['novelty_patterns_reported'],
+                novelty_patterns_validated=data['novelty_patterns_validated'],
+                novelty_addresses_valid=data['novelty_addresses_valid'],
+                novelty_connections_valid=data['novelty_connections_valid'],
+                all_addresses_exist=data['all_addresses_exist'],
+                all_connections_exist=data['all_connections_exist'],
+                data_correctness_passed=data['data_correctness_passed'],
+                status=RunStatus(data['status']),
+                error_message=data['error_message'],
+                created_at=data['created_at']
             ))
         
         return runs
@@ -269,7 +263,7 @@ class BenchmarkResultsRepository(BaseRepository):
                execution_time_seconds, container_exit_code, gpu_memory_peak_mb,
                auc_roc, precision_at_recall_80, all_addresses_exist, data_correctness_passed,
                status, error_message, created_at
-        FROM benchmark_ml_daily_runs
+        FROM benchmark_ml_daily_runs FINAL
         WHERE epoch_id = %(epoch_id)s
         ORDER BY test_date, network
         """
@@ -278,24 +272,25 @@ class BenchmarkResultsRepository(BaseRepository):
         
         runs = []
         for row in result.result_rows:
+            data = row_to_dict(row, result.column_names)
             runs.append(MLDailyRun(
-                run_id=UUID(row[0]) if isinstance(row[0], str) else row[0],
-                epoch_id=UUID(row[1]) if isinstance(row[1], str) else row[1],
-                hotkey=row[2],
-                test_date=row[3],
-                network=row[4],
-                window_days=row[5],
-                processing_date=row[6],
-                execution_time_seconds=row[7],
-                container_exit_code=row[8],
-                gpu_memory_peak_mb=row[9],
-                auc_roc=row[10],
-                precision_at_recall_80=row[11],
-                all_addresses_exist=row[12],
-                data_correctness_passed=row[13],
-                status=RunStatus(row[14]),
-                error_message=row[15],
-                created_at=row[16]
+                run_id=UUID(data['run_id']) if isinstance(data['run_id'], str) else data['run_id'],
+                epoch_id=UUID(data['epoch_id']) if isinstance(data['epoch_id'], str) else data['epoch_id'],
+                hotkey=data['hotkey'],
+                test_date=data['test_date'],
+                network=data['network'],
+                window_days=data['window_days'],
+                processing_date=data['processing_date'],
+                execution_time_seconds=data['execution_time_seconds'],
+                container_exit_code=data['container_exit_code'],
+                gpu_memory_peak_mb=data['gpu_memory_peak_mb'],
+                auc_roc=data['auc_roc'],
+                precision_at_recall_80=data['precision_at_recall_80'],
+                all_addresses_exist=data['all_addresses_exist'],
+                data_correctness_passed=data['data_correctness_passed'],
+                status=RunStatus(data['status']),
+                error_message=data['error_message'],
+                created_at=data['created_at']
             ))
         
         return runs
@@ -337,7 +332,7 @@ class BenchmarkResultsRepository(BaseRepository):
                pattern_accuracy_score, data_correctness_score, performance_score,
                final_score, rank, baseline_comparison_ratio,
                all_runs_within_time_limit, average_execution_time_seconds, calculated_at
-        FROM benchmark_scores
+        FROM benchmark_scores FINAL
         WHERE image_type = %(image_type)s
         ORDER BY hotkey, calculated_at DESC
         """
@@ -348,23 +343,24 @@ class BenchmarkResultsRepository(BaseRepository):
         seen_hotkeys = set()
         
         for row in result.result_rows:
-            hotkey = row[1]
+            data = row_to_dict(row, result.column_names)
+            hotkey = data['hotkey']
             if hotkey not in seen_hotkeys:
                 seen_hotkeys.add(hotkey)
                 scores.append(BenchmarkScore(
-                    epoch_id=UUID(row[0]) if isinstance(row[0], str) else row[0],
-                    hotkey=row[1],
-                    image_type=ImageType(row[2]),
-                    data_correctness_all_days=row[3],
-                    pattern_accuracy_score=row[4],
-                    data_correctness_score=row[5],
-                    performance_score=row[6],
-                    final_score=row[7],
-                    rank=row[8],
-                    baseline_comparison_ratio=row[9],
-                    all_runs_within_time_limit=row[10],
-                    average_execution_time_seconds=row[11],
-                    calculated_at=row[12]
+                    epoch_id=UUID(data['epoch_id']) if isinstance(data['epoch_id'], str) else data['epoch_id'],
+                    hotkey=data['hotkey'],
+                    image_type=ImageType(data['image_type']),
+                    data_correctness_all_days=data['data_correctness_all_days'],
+                    pattern_accuracy_score=data['pattern_accuracy_score'],
+                    data_correctness_score=data['data_correctness_score'],
+                    performance_score=data['performance_score'],
+                    final_score=data['final_score'],
+                    rank=data['rank'],
+                    baseline_comparison_ratio=data['baseline_comparison_ratio'],
+                    all_runs_within_time_limit=data['all_runs_within_time_limit'],
+                    average_execution_time_seconds=data['average_execution_time_seconds'],
+                    calculated_at=data['calculated_at']
                 ))
         
         return scores

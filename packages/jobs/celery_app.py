@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 from chainswarm_core.jobs import create_celery_app, run_dev_worker
 
 

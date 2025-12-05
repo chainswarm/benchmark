@@ -1,20 +1,21 @@
 from celery_singleton import Singleton
 from loguru import logger
+
+from chainswarm_core import ClientFactory
+from chainswarm_core.db import get_connection_params
 from chainswarm_core.jobs import BaseTask
-from chainswarm_core.observability import setup_logger
+
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory, MigrateSchema
+from packages.jobs.base import BenchmarkTaskContext
+from packages.storage import MigrateSchema
 from packages.benchmark.models.miner import ImageType
 
 
 class MinerDatabaseInitializationTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict):
-        hotkey = context['hotkey']
-        image_type = ImageType(context['image_type'])
-        
-        service_name = f'miner-db-init-{hotkey}'
-        setup_logger(service_name)
+    def execute_task(self, context: BenchmarkTaskContext):
+        hotkey = context.hotkey
+        image_type = ImageType(context.image_type)
 
         connection_params = get_connection_params(hotkey)
         
@@ -47,12 +48,18 @@ class MinerDatabaseInitializationTask(BaseTask, Singleton):
 )
 def miner_database_initialization_task(
     self,
+    network: str,
+    window_days: int,
+    processing_date: str,
     hotkey: str,
     image_type: str,
 ):
-    context = {
-        'hotkey': hotkey,
-        'image_type': image_type
-    }
+    context = BenchmarkTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date,
+        hotkey=hotkey,
+        image_type=image_type
+    )
     
     return self.run(context)

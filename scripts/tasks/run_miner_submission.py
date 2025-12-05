@@ -1,11 +1,15 @@
+#!/usr/bin/env python3
 import argparse
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from dotenv import load_dotenv
 from loguru import logger
-from packages import setup_logger
+from chainswarm_core.observability import setup_logger
+
+load_dotenv()
 
 
 def main():

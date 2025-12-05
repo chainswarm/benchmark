@@ -1,26 +1,19 @@
-import os
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from clickhouse_connect import get_client
 from clickhouse_connect.driver import Client
+
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core.observability import log_errors
 
 from packages.benchmark.models.epoch import BenchmarkEpoch, EpochStatus
 from packages.benchmark.models.miner import ImageType
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.utils.decorators import log_errors
 
 
 class BenchmarkEpochRepository(BaseRepository):
     
-    def __init__(self, client: Client = None):
-        if client is None:
-            client = get_client(
-                host=os.environ['VALIDATOR_CH_HOST'],
-                port=int(os.environ['VALIDATOR_CH_PORT']),
-                database='default'
-            )
+    def __init__(self, client: Client):
         super().__init__(client)
 
     @classmethod
@@ -36,7 +29,7 @@ class BenchmarkEpochRepository(BaseRepository):
         query = f"""
         SELECT epoch_id, hotkey, image_type, start_date, end_date, status,
                docker_image_tag, miner_database_name, created_at, completed_at
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE epoch_id = %(epoch_id)s
         LIMIT 1
         """
@@ -47,16 +40,16 @@ class BenchmarkEpochRepository(BaseRepository):
             raise ValueError(f"Epoch not found: {epoch_id}")
         
         row = result.result_rows[0]
-        return self._row_to_epoch(row)
+        return self._row_to_epoch(row, result.column_names)
 
     @log_errors
     def get_active_epoch(self, hotkey: str, image_type: ImageType) -> Optional[BenchmarkEpoch]:
         query = f"""
         SELECT epoch_id, hotkey, image_type, start_date, end_date, status,
                docker_image_tag, miner_database_name, created_at, completed_at
-        FROM {self.table_name()}
-        WHERE hotkey = %(hotkey)s 
-          AND image_type = %(image_type)s 
+        FROM {self.table_name()} FINAL
+        WHERE hotkey = %(hotkey)s
+          AND image_type = %(image_type)s
           AND status IN ('pending', 'running')
         ORDER BY start_date DESC
         LIMIT 1
@@ -71,14 +64,14 @@ class BenchmarkEpochRepository(BaseRepository):
             return None
         
         row = result.result_rows[0]
-        return self._row_to_epoch(row)
+        return self._row_to_epoch(row, result.column_names)
 
     @log_errors
     def get_epochs_for_miner(self, hotkey: str, image_type: ImageType) -> List[BenchmarkEpoch]:
         query = f"""
         SELECT epoch_id, hotkey, image_type, start_date, end_date, status,
                docker_image_tag, miner_database_name, created_at, completed_at
-        FROM {self.table_name()}
+        FROM {self.table_name()} FINAL
         WHERE hotkey = %(hotkey)s AND image_type = %(image_type)s
         ORDER BY start_date DESC
         """
@@ -90,7 +83,7 @@ class BenchmarkEpochRepository(BaseRepository):
         
         epochs = []
         for row in result.result_rows:
-            epochs.append(self._row_to_epoch(row))
+            epochs.append(self._row_to_epoch(row, result.column_names))
         
         return epochs
 
@@ -147,16 +140,17 @@ class BenchmarkEpochRepository(BaseRepository):
             'completed_at': completed_at
         })
 
-    def _row_to_epoch(self, row) -> BenchmarkEpoch:
+    def _row_to_epoch(self, row, column_names) -> BenchmarkEpoch:
+        data = row_to_dict(row, column_names)
         return BenchmarkEpoch(
-            epoch_id=UUID(row[0]) if isinstance(row[0], str) else row[0],
-            hotkey=row[1],
-            image_type=ImageType(row[2]),
-            start_date=row[3],
-            end_date=row[4],
-            status=EpochStatus(row[5]),
-            docker_image_tag=row[6],
-            miner_database_name=row[7],
-            created_at=row[8],
-            completed_at=row[9]
+            epoch_id=UUID(data['epoch_id']) if isinstance(data['epoch_id'], str) else data['epoch_id'],
+            hotkey=data['hotkey'],
+            image_type=ImageType(data['image_type']),
+            start_date=data['start_date'],
+            end_date=data['end_date'],
+            status=EpochStatus(data['status']),
+            docker_image_tag=data['docker_image_tag'],
+            miner_database_name=data['miner_database_name'],
+            created_at=data['created_at'],
+            completed_at=data['completed_at']
         )

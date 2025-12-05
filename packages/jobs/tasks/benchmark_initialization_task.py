@@ -1,20 +1,18 @@
 from celery_singleton import Singleton
 from loguru import logger
 
+from chainswarm_core import ClientFactory, create_database
+from chainswarm_core.db import get_connection_params
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
-from chainswarm_core.observability import setup_logger
 
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory, MigrateSchema, create_database
+from packages.storage import MigrateSchema, DATABASE_PREFIX
 
 
 class BenchmarkInitializationTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        setup_logger('benchmark-initialization')
-
-        connection_params = get_connection_params('default')
-        connection_params['database'] = 'benchmark'
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
         create_database(connection_params)
 
         client_factory = ClientFactory(connection_params)
@@ -36,6 +34,10 @@ class BenchmarkInitializationTask(BaseTask, Singleton):
     time_limit=1800,
     soft_time_limit=1700
 )
-def benchmark_initialization_task(self):
-    context = BaseTaskContext()
+def benchmark_initialization_task(self, network: str, window_days: int, processing_date: str):
+    context = BaseTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date
+    )
     return self.run(context)
