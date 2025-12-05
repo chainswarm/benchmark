@@ -17,21 +17,22 @@ from packages.benchmark.security.code_scanner import CodeScanner
 from packages.benchmark.security.file_validator import FileValidator
 from packages.benchmark.security.llm_analyzer import LLMCodeAnalyzer
 from packages.benchmark.security.malware_scanner import MalwareScanner
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
 
 
 class CodeAnalysisTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict) -> dict:
-        image_type = context['image_type']
-        repository_path = Path(context['repository_path'])
-        hotkey = context['hotkey']
-
+    def execute_task(self, context: BenchmarkTaskContext) -> dict:
+        image_type = context.image_type
+        repository_path = Path(context.repository_path)
+        hotkey = context.hotkey
         
         logger.info("Starting code analysis", extra={
             "repository_path": str(repository_path),
             "hotkey": hotkey,
-            "image_type": image_type
+            "image_type": image_type,
+            "network": context.network
         })
         
         result = RepositoryAnalysisResult(
@@ -191,14 +192,20 @@ class CodeAnalysisTask(BaseTask, Singleton):
 )
 def code_analysis_task(
     self,
+    network: str,
+    window_days: int,
+    processing_date: str,
     repository_path: str,
     hotkey: str,
     image_type: str,
 ):
-    context = {
-        'repository_path': repository_path,
-        'hotkey': hotkey,
-        'image_type': image_type
-    }
+    context = BenchmarkTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date,
+        repository_path=repository_path,
+        hotkey=hotkey,
+        image_type=image_type
+    )
     
     return self.run(context)

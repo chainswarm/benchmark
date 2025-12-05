@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 from celery_singleton import Singleton
 from loguru import logger
@@ -7,21 +6,15 @@ from loguru import logger
 from chainswarm_core.jobs import BaseTask
 
 from packages.benchmark.managers.dataset_manager import DatasetManager
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
-
-
-@dataclass
-class DatasetConfig:
-    network: str
-    processing_date: str
-    window_days: int
 
 
 class DatasetPreparationTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict) -> dict:
-        datasets_config = context.get('datasets', [])
-        fail_on_missing = context.get('fail_on_missing', True)
+    def execute_task(self, context: BenchmarkTaskContext) -> dict:
+        datasets_config = context.datasets or []
+        fail_on_missing = context.fail_on_missing if context.fail_on_missing is not None else True
         
         logger.info("Starting dataset preparation", extra={
             "dataset_count": len(datasets_config),
@@ -164,10 +157,10 @@ def dataset_preparation_task(
     datasets: List[dict],
     fail_on_missing: bool = True,
 ):
-    context = {
-        'datasets': datasets,
-        'fail_on_missing': fail_on_missing
-    }
+    context = BenchmarkTaskContext(
+        datasets=datasets,
+        fail_on_missing=fail_on_missing
+    )
     
     return self.run(context)
 

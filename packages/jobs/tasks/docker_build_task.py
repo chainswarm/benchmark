@@ -10,20 +10,22 @@ from packages.benchmark.managers.docker_manager import DockerManager
 from packages.benchmark.managers.repository_manager import RepositoryManager
 from packages.benchmark.models.analysis import BuildResult
 from packages.benchmark.models.miner import ImageType
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
 
 
 class DockerBuildTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict) -> dict:
-        repository_path = Path(context['repository_path'])
-        hotkey = context['hotkey']
-        image_type = ImageType(context['image_type'])
+    def execute_task(self, context: BenchmarkTaskContext) -> dict:
+        repository_path = Path(context.repository_path)
+        hotkey = context.hotkey
+        image_type = ImageType(context.image_type)
         
         logger.info("Starting Docker build", extra={
             "repository_path": str(repository_path),
             "hotkey": hotkey,
-            "image_type": image_type.value
+            "image_type": image_type.value,
+            "network": context.network
         })
         
         start_time = time.time()
@@ -83,14 +85,20 @@ class DockerBuildTask(BaseTask, Singleton):
 )
 def docker_build_task(
     self,
+    network: str,
+    window_days: int,
+    processing_date: str,
     repository_path: str,
     hotkey: str,
     image_type: str,
 ):
-    context = {
-        'repository_path': repository_path,
-        'hotkey': hotkey,
-        'image_type': image_type
-    }
+    context = BenchmarkTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date,
+        repository_path=repository_path,
+        hotkey=hotkey,
+        image_type=image_type
+    )
     
     return self.run(context)

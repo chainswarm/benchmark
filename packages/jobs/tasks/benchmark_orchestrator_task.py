@@ -5,6 +5,10 @@ from uuid import uuid4
 from celery_singleton import Singleton
 from loguru import logger
 
+from chainswarm_core import ClientFactory
+from chainswarm_core.db import get_connection_params
+from chainswarm_core.jobs import BaseTask
+
 from packages.benchmark.managers.dataset_manager import DatasetManager
 from packages.benchmark.managers.docker_manager import DockerManager
 from packages.benchmark.managers.repository_manager import RepositoryManager
@@ -12,65 +16,70 @@ from packages.benchmark.managers.scoring_manager import ScoringManager
 from packages.benchmark.managers.validation_manager import ValidationManager
 from packages.benchmark.models.epoch import BenchmarkEpoch, EpochStatus
 from packages.benchmark.models.miner import ImageType, Miner, MinerStatus
-from packages.jobs.base.base_task import BaseDataPipelineTask
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
+from packages.storage import DATABASE_PREFIX
+from packages.storage.repositories.miner_registry_repository import MinerRegistryRepository
+from packages.storage.repositories.benchmark_epoch_repository import BenchmarkEpochRepository
 
 
-class BenchmarkOrchestratorTask(BaseDataPipelineTask, Singleton):
+class BenchmarkOrchestratorTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict):
-        image_type = ImageType(context['image_type'])
-        test_date = date.fromisoformat(context['test_date'])
+    def execute_task(self, context: BenchmarkTaskContext):
+        image_type = ImageType(context.image_type)
+        test_date = date.fromisoformat(context.processing_date)
         
         logger.info("Starting benchmark orchestrator", extra={
             "image_type": image_type.value,
-            "test_date": str(test_date)
-        })
-        
-        from packages.storage.repositories.miner_registry_repository import MinerRegistryRepository
-        from packages.storage.repositories.benchmark_epoch_repository import BenchmarkEpochRepository
-        
-        miner_repo = MinerRegistryRepository()
-        epoch_repo = BenchmarkEpochRepository()
-        repo_manager = RepositoryManager()
-        docker_manager = DockerManager()
-        dataset_manager = DatasetManager()
-        
-        active_miners = miner_repo.get_active_miners(image_type)
-        
-        logger.info("Found active miners", extra={
-            "count": len(active_miners),
-            "image_type": image_type.value
-        })
-        
-        for miner in active_miners:
-            try:
-                self._process_miner(
-                    miner=miner,
-                    test_date=test_date,
-                    epoch_repo=epoch_repo,
-                    repo_manager=repo_manager,
-                    docker_manager=docker_manager,
-                    dataset_manager=dataset_manager
-                )
-            except Exception as e:
-                logger.error("Failed to process miner", extra={
-                    "hotkey": miner.hotkey,
-                    "error": str(e)
-                })
-                miner_repo.update_miner_status(
-                    miner.hotkey,
-                    miner.image_type,
-                    MinerStatus.FAILED,
-                    str(e)
-                )
-        
-        return {
-            "status": "success",
-            "image_type": image_type.value,
             "test_date": str(test_date),
-            "miners_processed": len(active_miners)
-        }
+            "network": context.network
+        })
+        
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
+        client_factory = ClientFactory(connection_params)
+        
+        with client_factory.client_context() as client:
+            miner_repo = MinerRegistryRepository(client)
+            epoch_repo = BenchmarkEpochRepository(client)
+            repo_manager = RepositoryManager()
+            docker_manager = DockerManager()
+            dataset_manager = DatasetManager()
+        
+            active_miners = miner_repo.get_active_miners(image_type)
+            
+            logger.info("Found active miners", extra={
+                "count": len(active_miners),
+                "image_type": image_type.value
+            })
+            
+            for miner in active_miners:
+                try:
+                    self._process_miner(
+                        miner=miner,
+                        test_date=test_date,
+                        epoch_repo=epoch_repo,
+                        repo_manager=repo_manager,
+                        docker_manager=docker_manager,
+                        dataset_manager=dataset_manager
+                    )
+                except Exception as e:
+                    logger.error("Failed to process miner", extra={
+                        "hotkey": miner.hotkey,
+                        "error": str(e)
+                    })
+                    miner_repo.update_miner_status(
+                        miner.hotkey,
+                        miner.image_type,
+                        MinerStatus.FAILED,
+                        str(e)
+                    )
+            
+            return {
+                "status": "success",
+                "image_type": image_type.value,
+                "test_date": str(test_date),
+                "miners_processed": len(active_miners)
+            }
 
     def _process_miner(
         self,
@@ -218,12 +227,16 @@ class BenchmarkOrchestratorTask(BaseDataPipelineTask, Singleton):
 )
 def benchmark_orchestrator_task(
     self,
+    network: str,
+    window_days: int,
+    processing_date: str,
     image_type: str,
-    test_date: str,
 ):
-    context = {
-        'image_type': image_type,
-        'test_date': test_date
-    }
+    context = BenchmarkTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date,
+        image_type=image_type
+    )
     
     return self.run(context)

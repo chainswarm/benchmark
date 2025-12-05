@@ -360,17 +360,36 @@ SELECT * FROM benchmark_miner_registry FINAL WHERE ...
 
 ## Summary Checklist
 
-- [ ] 1. Update `BenchmarkTaskContext` with domain fields
-- [ ] 2.1 Add `row_to_dict` import to `miner_registry_repository.py`
-- [ ] 2.2 Add `row_to_dict` import to `benchmark_epoch_repository.py`
-- [ ] 2.3 Add `row_to_dict` import to `miner_database_repository.py`
-- [ ] 2.4 Add `row_to_dict` import to `benchmark_results_repository.py`
-- [ ] 3.1 Remove self-creating client in `miner_registry_repository.py`
-- [ ] 3.2 Remove self-creating client in `benchmark_epoch_repository.py`
-- [ ] 4.1 Use `row_to_dict` in `miner_registry_repository.py` methods
-- [ ] 4.2 Use `row_to_dict` in `benchmark_epoch_repository.py` methods
-- [ ] 5.1 Remove `setup_logger` from `benchmark_initialization_task.py`
-- [ ] 5.2 Remove `setup_logger` from `miner_database_initialization_task.py`
-- [ ] 6. Update `miner_database_initialization_task.py` to use typed context
-- [ ] 7. Update `benchmark_initialization_task.py` database connection pattern
-- [ ] 8. Add FINAL keyword to all SELECT queries
+- [x] 1. Update `BenchmarkTaskContext` with domain fields
+- [x] 2.1 Add `row_to_dict` import to `miner_registry_repository.py`
+- [x] 2.2 Add `row_to_dict` import to `benchmark_epoch_repository.py`
+- [x] 2.3 Add `row_to_dict` import to `miner_database_repository.py`
+- [x] 2.4 Add `row_to_dict` import to `benchmark_results_repository.py`
+- [x] 3.1 Remove self-creating client in `miner_registry_repository.py`
+- [x] 3.2 Remove self-creating client in `benchmark_epoch_repository.py`
+- [x] 4.1 Use `row_to_dict` in `miner_registry_repository.py` methods
+- [x] 4.2 Use `row_to_dict` in `benchmark_epoch_repository.py` methods
+- [x] 5.1 Remove `setup_logger` from `benchmark_initialization_task.py`
+- [x] 5.2 Remove `setup_logger` from `miner_database_initialization_task.py`
+- [x] 6. Update `miner_database_initialization_task.py` to use typed context
+- [x] 7. Update `benchmark_initialization_task.py` database connection pattern
+- [x] 8. Add FINAL keyword to all SELECT queries
+
+---
+
+## Additional Task Updates Completed
+
+The following task files were also updated to use `BenchmarkTaskContext` and follow the analytics-pipeline conventions:
+
+- [x] `benchmark_orchestrator_task.py` - Fixed invalid base class, added typed context and client handling
+- [x] `benchmark_scoring_task.py` - Added typed context and proper client handling
+- [x] `docker_build_task.py` - Added typed context
+- [x] `benchmark_validation_task.py` - Added typed context and client handling
+- [x] `benchmark_test_execution_task.py` - Added typed context and client handling
+- [x] `container_run_task.py` - Added typed context
+- [x] `code_analysis_task.py` - Added typed context
+- [x] `dataset_preparation_task.py` - Added typed context
+- [x] `repository_clone_task.py` - Added typed context
+- [x] `benchmark_cleanup_task.py` - Added typed context and client handling
+
+**Completion Date:** 2025-12-05

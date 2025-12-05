@@ -1,18 +1,20 @@
 from celery_singleton import Singleton
 from loguru import logger
+
 from chainswarm_core.jobs import BaseTask
+
 from packages.benchmark.managers.repository_manager import RepositoryManager
-from packages.benchmark.models.analysis import CloneResult
 from packages.benchmark.models.miner import ImageType
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
 
 
 class RepositoryCloneTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict) -> dict:
-        github_url = context['github_url']
-        hotkey = context['hotkey']
-        image_type = ImageType(context['image_type'])
+    def execute_task(self, context: BenchmarkTaskContext) -> dict:
+        github_url = context.github_repository
+        hotkey = context.hotkey
+        image_type = ImageType(context.image_type)
         
         logger.info("Starting repository clone", extra={
             "github_url": github_url,
@@ -57,14 +59,14 @@ class RepositoryCloneTask(BaseTask, Singleton):
 )
 def repository_clone_task(
     self,
-    github_url: str,
+    github_repository: str,
     hotkey: str,
     image_type: str,
 ):
-    context = {
-        'github_url': github_url,
-        'hotkey': hotkey,
-        'image_type': image_type
-    }
+    context = BenchmarkTaskContext(
+        github_repository=github_repository,
+        hotkey=hotkey,
+        image_type=image_type
+    )
     
     return self.run(context)

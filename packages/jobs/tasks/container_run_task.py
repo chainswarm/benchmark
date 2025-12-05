@@ -8,18 +8,19 @@ from chainswarm_core.jobs import BaseTask
 
 from packages.benchmark.managers.docker_manager import DockerManager
 from packages.benchmark.models.miner import ImageType
+from packages.jobs.base import BenchmarkTaskContext
 from packages.jobs.celery_app import celery_app
 
 
 class ContainerRunTask(BaseTask, Singleton):
 
-    def execute_task(self, context: dict) -> dict:
-        image_tag = context['image_tag']
-        data_mount_path = Path(context['data_mount_path'])
-        miner_database = context['miner_database']
-        timeout = context.get('timeout', 3600)
-        hotkey = context['hotkey']
-        image_type = ImageType(context['image_type'])
+    def execute_task(self, context: BenchmarkTaskContext) -> dict:
+        image_tag = context.image_tag
+        data_mount_path = Path(context.data_mount_path)
+        miner_database = context.miner_database
+        timeout = context.timeout or 3600
+        hotkey = context.hotkey
+        image_type = ImageType(context.image_type)
         
         logger.info("Starting container run", extra={
             "image_tag": image_tag,
@@ -27,7 +28,8 @@ class ContainerRunTask(BaseTask, Singleton):
             "miner_database": miner_database,
             "timeout": timeout,
             "hotkey": hotkey,
-            "image_type": image_type.value
+            "image_type": image_type.value,
+            "network": context.network
         })
         
         if not data_mount_path.exists():
@@ -85,6 +87,9 @@ class ContainerRunTask(BaseTask, Singleton):
 )
 def container_run_task(
     self,
+    network: str,
+    window_days: int,
+    processing_date: str,
     image_tag: str,
     data_mount_path: str,
     miner_database: str,
@@ -92,13 +97,16 @@ def container_run_task(
     image_type: str,
     timeout: Optional[int] = 3600,
 ):
-    context = {
-        'image_tag': image_tag,
-        'data_mount_path': data_mount_path,
-        'miner_database': miner_database,
-        'hotkey': hotkey,
-        'image_type': image_type,
-        'timeout': timeout or 3600
-    }
+    context = BenchmarkTaskContext(
+        network=network,
+        window_days=window_days,
+        processing_date=processing_date,
+        image_tag=image_tag,
+        data_mount_path=data_mount_path,
+        miner_database=miner_database,
+        hotkey=hotkey,
+        image_type=image_type,
+        timeout=timeout or 3600
+    )
     
     return self.run(context)
