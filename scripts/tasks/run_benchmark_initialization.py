@@ -2,7 +2,6 @@
 import argparse
 from datetime import date
 from dotenv import load_dotenv
-from loguru import logger
 
 from chainswarm_core.observability import setup_logger
 from chainswarm_core.jobs import BaseTaskContext
@@ -20,7 +19,7 @@ def main():
     load_dotenv()
     
     # Setup logger once for the task
-    service_name = 'benchmark-initialization'
+    service_name = f'benchmark-{args.network}-initialization'
     setup_logger(service_name)
     
     processing_date = args.processing_date or date.today().isoformat()
@@ -33,8 +32,6 @@ def main():
     
     task = BenchmarkInitializationTask()
     task.execute_task(context)
-    
-    logger.info("Benchmark schema initialization completed")
 
 
 if __name__ == "__main__":

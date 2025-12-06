@@ -6,7 +6,14 @@ from chainswarm_core.jobs import BaseTaskContext as CoreBaseTaskContext, BaseTas
 
 @dataclass
 class BenchmarkTaskContext(CoreBaseTaskContext):
-    """Extended task context with benchmark-specific fields."""
+    """Extended task context with benchmark-specific fields.
+    
+    Field Naming Convention:
+    - `image_tag` / `miner_database`: Runtime references passed between tasks
+    - `docker_image_tag` / `miner_database_name`: Persisted field names in epoch/result models
+    
+    The duplication exists for compatibility with different contexts (task passing vs database persistence).
+    """
     hotkey: Optional[str] = None
     image_type: Optional[str] = None
     epoch_id: Optional[str] = None

@@ -5,7 +5,7 @@ from celery_singleton import Singleton
 from loguru import logger
 
 from chainswarm_core import ClientFactory
-from chainswarm_core.db import get_connection_params
+from chainswarm_core.db import get_connection_params, row_to_dict
 from chainswarm_core.jobs import BaseTask
 
 from packages.benchmark.managers.dataset_manager import DatasetManager
@@ -21,6 +21,9 @@ from packages.storage.repositories.benchmark_results_repository import Benchmark
 class BenchmarkValidationTask(BaseTask, Singleton):
 
     def execute_task(self, context: BenchmarkTaskContext):
+        # TODO: For long-running validation, consider checking chainswarm_core.terminate_event.is_set()
+        #       to support graceful shutdown of workers. This would allow early termination
+        #       during validation loops if the worker is shutting down.
         run_id = UUID(context.run_id)
         epoch_id = UUID(context.epoch_id)
         hotkey = context.hotkey
@@ -117,7 +120,7 @@ class BenchmarkValidationTask(BaseTask, Singleton):
             }
 
     def _get_miner_patterns(self, miner_database: str, image_type: ImageType, client_factory: ClientFactory) -> list:
-        miner_connection_params = get_connection_params(miner_database)
+        miner_connection_params = get_connection_params(miner_database, database_prefix=DATABASE_PREFIX)
         miner_client_factory = ClientFactory(miner_connection_params)
         
         with miner_client_factory.client_context() as client:
@@ -131,12 +134,13 @@ class BenchmarkValidationTask(BaseTask, Singleton):
                 
                 patterns = []
                 for row in result.result_rows:
+                    data = row_to_dict(row, result.column_names)
                     patterns.append({
-                        'pattern_id': row[0],
-                        'pattern_type': row[1],
-                        'addresses': row[2],
-                        'transactions': row[3],
-                        'confidence': row[4]
+                        'pattern_id': data['pattern_id'],
+                        'pattern_type': data['pattern_type'],
+                        'addresses': data['addresses'],
+                        'transactions': data['transactions'],
+                        'confidence': data['confidence']
                     })
                 
                 return patterns
@@ -154,7 +158,7 @@ class BenchmarkValidationTask(BaseTask, Singleton):
         return novelty_patterns
 
     def _get_ml_risk_scores(self, miner_database: str, client_factory: ClientFactory) -> dict:
-        miner_connection_params = get_connection_params(miner_database)
+        miner_connection_params = get_connection_params(miner_database, database_prefix=DATABASE_PREFIX)
         miner_client_factory = ClientFactory(miner_connection_params)
         
         with miner_client_factory.client_context() as client:
@@ -167,7 +171,8 @@ class BenchmarkValidationTask(BaseTask, Singleton):
             
             risk_scores = {}
             for row in result.result_rows:
-                risk_scores[row[0]] = row[1]
+                data = row_to_dict(row, result.column_names)
+                risk_scores[data['address']] = data['risk_score']
             
             return risk_scores
 

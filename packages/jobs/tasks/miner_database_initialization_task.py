@@ -1,13 +1,13 @@
 from celery_singleton import Singleton
 from loguru import logger
 
-from chainswarm_core import ClientFactory
+from chainswarm_core import ClientFactory, create_database
 from chainswarm_core.db import get_connection_params
 from chainswarm_core.jobs import BaseTask
 
 from packages.jobs.celery_app import celery_app
 from packages.jobs.base import BenchmarkTaskContext
-from packages.storage import MigrateSchema
+from packages.storage import MigrateSchema, DATABASE_PREFIX
 from packages.benchmark.models.miner import ImageType
 
 
@@ -17,7 +17,8 @@ class MinerDatabaseInitializationTask(BaseTask, Singleton):
         hotkey = context.hotkey
         image_type = ImageType(context.image_type)
 
-        connection_params = get_connection_params(hotkey)
+        connection_params = get_connection_params(hotkey, database_prefix=DATABASE_PREFIX)
+        create_database(connection_params)
         
         logger.info(f"Initializing {image_type.value} miner database for {hotkey}")
         

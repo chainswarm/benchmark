@@ -393,3 +393,122 @@ The following task files were also updated to use `BenchmarkTaskContext` and fol
 - [x] `benchmark_cleanup_task.py` - Added typed context and client handling
 
 **Completion Date:** 2025-12-05
+
+---
+
+## Iteration 2 Updates (2025-12-05)
+
+### Completed
+
+- [x] **`miner_database_initialization_task.py`**: Added `database_prefix=DATABASE_PREFIX` parameter to `get_connection_params()` call
+- [x] **`miner_database_initialization_task.py`**: Added `create_database(connection_params)` call before ClientFactory (matching analytics-pipeline pattern)
+- [x] **`run_benchmark_initialization.py`**: Removed redundant `logger.info()` after task execution (task handles its own logging)
+- [x] **`run_benchmark_initialization.py`**: Fixed service_name to include network: `f'benchmark-{args.network}-initialization'`
+- [x] **`run_benchmark_initialization.py`**: Removed unused `loguru` import
+
+---
+
+## Iteration 3 - Completed (2025-12-05)
+
+### Completed
+
+- [x] **`benchmark_validation_task.py` Lines 120, 157** - Added `database_prefix=DATABASE_PREFIX` parameter to miner database connections
+- [x] **`benchmark_validation_task.py` Lines 134-139, 169-170** - Updated to use `row_to_dict` pattern instead of index-based access
+- [x] **Import update** - Added `row_to_dict` import from `chainswarm_core.db`
+
+### Design Decision: Miner Database Prefix
+
+The miner databases use the same `DATABASE_PREFIX` as the main benchmark database. This is consistent with `miner_database_initialization_task.py` which uses:
+```python
+connection_params = get_connection_params(hotkey, database_prefix=DATABASE_PREFIX)
+```
+
+The `miner_database` parameter passed to validation tasks is the hotkey, and `get_connection_params` combines it with `DATABASE_PREFIX` to create the full database name (e.g., `benchmark_<hotkey>`).
+
+### Verification Results
+
+After Iteration 3, all tasks now consistently:
+- Use `database_prefix=DATABASE_PREFIX` for all `get_connection_params` calls
+- Use `row_to_dict` for row-to-object conversion instead of index-based access
+- No remaining `setup_logger` calls inside task modules
+
+---
+
+## Iteration 4 - Completed (2025-12-05)
+
+### Completed
+
+- [x] **`task_models.py`** - Added docstring documenting field naming convention:
+  - `image_tag` / `miner_database`: Runtime references passed between tasks
+  - `docker_image_tag` / `miner_database_name`: Persisted field names in epoch/result models
+  - Documented that duplication exists for compatibility with different contexts (task passing vs database persistence)
+
+- [x] **Verified miner output tables schema** - Checked `miner_analytics_schema.sql` and `miner_ml_schema.sql`:
+  - `miner_output_patterns` uses `ENGINE = MergeTree()` (not ReplacingMergeTree)
+  - `miner_risk_scores` uses `ENGINE = MergeTree()` (not ReplacingMergeTree)
+  - **Result:** FINAL keyword is NOT needed for these queries
+
+- [x] **`benchmark_validation_task.py`** - Added TODO comment for graceful shutdown consideration:
+  ```python
+  # TODO: For long-running validation, consider checking chainswarm_core.terminate_event.is_set()
+  #       to support graceful shutdown of workers. This would allow early termination
+  #       during validation loops if the worker is shutting down.
+  ```
+
+### Deferred / Not Applicable
+
+- **Move query logic to repositories** - Keeping inline SQL for miner-generated tables is appropriate since:
+  - These are miner-created tables, not benchmark system tables
+  - Queries are simple count/select operations
+  - Creates clear separation between system repositories and miner data access
+
+---
+
+## Alignment Status: COMPLETE ✅
+
+After 4 iterations, the benchmark project is now fully aligned with chainswarm_core conventions:
+
+### Verified Patterns
+1. ✅ All `get_connection_params()` calls use `database_prefix=DATABASE_PREFIX`
+2. ✅ All row-to-object conversions use `row_to_dict()` pattern (no `row[0]` indexing)
+3. ✅ No `setup_logger()` calls inside task modules (only in script runners)
+4. ✅ All tasks use typed `BenchmarkTaskContext` (not dict)
+5. ✅ All SELECT queries on ReplacingMergeTree tables use FINAL keyword
+6. ✅ Client lifecycle managed via `ClientFactory.client_context()`
+7. ✅ Field naming conventions documented
+
+### Future Considerations (Optional)
+- Implement `terminate_event` checking for graceful shutdown in long-running tasks
+- Consider moving miner table queries to dedicated repository if access patterns grow complex
+
+---
+
+## Conventions Reference
+
+### Import Pattern (analytics-pipeline standard)
+```python
+from chainswarm_core import ClientFactory, create_database
+from chainswarm_core.db import get_connection_params, BaseRepository, row_to_dict
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
+from chainswarm_core.observability import setup_logger, log_errors
+```
+
+### Task Initialization Pattern
+```python
+connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
+create_database(connection_params)  # Create if not exists
+
+client_factory = ClientFactory(connection_params)
+with client_factory.client_context() as client:
+    # Use client
+```
+
+### Script Runner Pattern
+```python
+service_name = f'{project}-{args.network}-{task_name}'
+setup_logger(service_name)
+
+task = TaskClass()
+task.execute_task(context)
+# No extra logging - task handles its own
+```
