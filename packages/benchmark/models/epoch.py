@@ -26,6 +26,7 @@ class BenchmarkEpoch:
     miner_database_name: str
     created_at: datetime
     completed_at: Optional[datetime] = None
+    tournament_id: Optional[UUID] = None  # Links epoch to a tournament
 
     @property
     def duration_days(self) -> int:

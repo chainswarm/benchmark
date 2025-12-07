@@ -27,7 +27,14 @@ CREATE TABLE IF NOT EXISTS benchmark_analytics_daily_runs (
     status Enum('pending', 'running', 'completed', 'timeout', 'failed') DEFAULT 'pending',
     error_message Nullable(String),
 
-    created_at DateTime DEFAULT now()
+    created_at DateTime DEFAULT now(),
+    
+    -- Tournament tracking columns (optional - null for standalone benchmarks)
+    tournament_id Nullable(UUID),
+    participant_type Enum('miner', 'baseline') DEFAULT 'miner',
+    run_order UInt16 DEFAULT 0,
+    is_disqualified Bool DEFAULT false,
+    disqualification_reason Nullable(String)
 ) ENGINE = MergeTree()
 ORDER BY (epoch_id, test_date, network);
 
@@ -37,3 +44,15 @@ ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_status st
 ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_network network TYPE set(0) GRANULARITY 4;
 ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_test_date test_date TYPE minmax GRANULARITY 4;
 ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_data_correctness data_correctness_passed TYPE set(0) GRANULARITY 4;
+
+-- Add tournament tracking columns
+ALTER TABLE benchmark_analytics_daily_runs ADD COLUMN IF NOT EXISTS tournament_id Nullable(UUID);
+ALTER TABLE benchmark_analytics_daily_runs ADD COLUMN IF NOT EXISTS participant_type Enum('miner', 'baseline') DEFAULT 'miner';
+ALTER TABLE benchmark_analytics_daily_runs ADD COLUMN IF NOT EXISTS run_order UInt16 DEFAULT 0;
+ALTER TABLE benchmark_analytics_daily_runs ADD COLUMN IF NOT EXISTS is_disqualified Bool DEFAULT false;
+ALTER TABLE benchmark_analytics_daily_runs ADD COLUMN IF NOT EXISTS disqualification_reason Nullable(String);
+
+-- Add indexes for tournament columns
+ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_tournament_id tournament_id TYPE bloom_filter(0.01) GRANULARITY 4;
+ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_participant_type participant_type TYPE set(0) GRANULARITY 4;
+ALTER TABLE benchmark_analytics_daily_runs ADD INDEX IF NOT EXISTS idx_run_order run_order TYPE minmax GRANULARITY 4;

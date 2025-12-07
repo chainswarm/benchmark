@@ -22,6 +22,18 @@ from packages.benchmark.models.analysis import (
     CloneResult,
     BuildResult,
 )
+from packages.benchmark.models.baseline import (
+    Baseline,
+    BaselineStatus,
+)
+from packages.benchmark.models.tournament import (
+    ParticipantStatus,
+    ParticipantType,
+    Tournament,
+    TournamentParticipant,
+    TournamentResult,
+    TournamentStatus,
+)
 
 __all__ = [
     # Miner models
@@ -55,4 +67,16 @@ __all__ = [
     'RepositoryAnalysisResult',
     'CloneResult',
     'BuildResult',
+    
+    # Baseline models
+    'Baseline',
+    'BaselineStatus',
+    
+    # Tournament models
+    'ParticipantStatus',
+    'ParticipantType',
+    'Tournament',
+    'TournamentParticipant',
+    'TournamentResult',
+    'TournamentStatus',
 ]

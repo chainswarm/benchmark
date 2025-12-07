@@ -13,14 +13,16 @@ class BenchmarkInitializationTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
         connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
+        logger.info(f"Initializing benchmark database for {context.network}")
+
         create_database(connection_params)
 
         client_factory = ClientFactory(connection_params)
         with client_factory.client_context() as client:
             migrate_schema = MigrateSchema(client)
-            migrate_schema.run_core_migrations()
-            
-            logger.info("Benchmark schema initialization completed")
+            migrate_schema.run_all()
+
+            logger.info("Benchmark schema initialization completed (core + tournament tables)")
 
 
 @celery_app.task(
@@ -28,11 +30,11 @@ class BenchmarkInitializationTask(BaseTask, Singleton):
     base=BenchmarkInitializationTask,
     autoretry_for=(Exception,),
     retry_kwargs={
-        'max_retries': 3,
-        'countdown': 60
+        'max_retries': 24,
+        'countdown': 600
     },
-    time_limit=1800,
-    soft_time_limit=1700
+    time_limit=7200,
+    soft_time_limit=7080
 )
 def benchmark_initialization_task(self, network: str, window_days: int, processing_date: str):
     context = BaseTaskContext(

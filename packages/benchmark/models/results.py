@@ -41,6 +41,12 @@ class AnalyticsDailyRun:
     status: RunStatus
     error_message: Optional[str]
     created_at: datetime
+    # Tournament fields
+    tournament_id: Optional[UUID] = None
+    participant_type: str = 'miner'  # 'miner' or 'baseline'
+    run_order: int = 0
+    is_disqualified: bool = False
+    disqualification_reason: Optional[str] = None
 
 
 @dataclass
@@ -62,6 +68,12 @@ class MLDailyRun:
     status: RunStatus
     error_message: Optional[str]
     created_at: datetime
+    # Tournament fields
+    tournament_id: Optional[UUID] = None
+    participant_type: str = 'miner'  # 'miner' or 'baseline'
+    run_order: int = 0
+    is_disqualified: bool = False
+    disqualification_reason: Optional[str] = None
 
 
 @dataclass

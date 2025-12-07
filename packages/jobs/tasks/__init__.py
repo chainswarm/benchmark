@@ -14,6 +14,12 @@ from packages.jobs.tasks.docker_build_task import docker_build_task
 from packages.jobs.tasks.miner_database_initialization_task import miner_database_initialization_task
 from packages.jobs.tasks.repository_clone_task import repository_clone_task
 
+# Tournament tasks
+from packages.jobs.tasks.tournament_orchestrator_task import tournament_orchestrator_task
+from packages.jobs.tasks.tournament_day_execution_task import tournament_day_execution_task
+from packages.jobs.tasks.tournament_scoring_task import tournament_scoring_task
+from packages.jobs.tasks.baseline_promotion_task import baseline_promotion_task
+
 
 __all__ = [
     # Benchmark pipeline tasks
@@ -31,4 +37,10 @@ __all__ = [
     'code_analysis_task',
     'docker_build_task',
     'container_run_task',
+    
+    # Tournament pipeline tasks
+    'tournament_orchestrator_task',
+    'tournament_day_execution_task',
+    'tournament_scoring_task',
+    'baseline_promotion_task',
 ]

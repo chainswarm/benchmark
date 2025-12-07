@@ -29,4 +29,21 @@ class BenchmarkTaskContext(CoreBaseTaskContext):
     timeout: Optional[int] = None
 
 
-__all__ = ["BenchmarkTaskContext", "BaseTaskResult"]
+@dataclass
+class TournamentTaskContext(CoreBaseTaskContext):
+    """Task context for tournament-related tasks.
+    
+    Used by:
+    - tournament_orchestrator_task: Manages tournament lifecycle
+    - tournament_day_execution_task: Executes daily benchmarks for all participants
+    - tournament_scoring_task: Calculates final scores and rankings
+    - baseline_promotion_task: Promotes winner as new baseline
+    """
+    tournament_id: Optional[str] = None
+    image_type: Optional[str] = None
+    test_date: Optional[str] = None
+    winner_hotkey: Optional[str] = None
+    epoch_id: Optional[str] = None
+
+
+__all__ = ["BenchmarkTaskContext", "TournamentTaskContext", "BaseTaskResult"]

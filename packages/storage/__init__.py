@@ -1,9 +1,3 @@
-"""
-Storage module for benchmark pipeline.
-
-Provides schema migration support and database prefix configuration.
-All base classes and utilities are imported from chainswarm-core.
-"""
 from pathlib import Path
 from chainswarm_core.db import BaseMigrateSchema
 
@@ -11,9 +5,8 @@ DATABASE_PREFIX = 'benchmark'
 
 
 class MigrateSchema(BaseMigrateSchema):
-    """ClickHouse schema migration manager for benchmark pipeline."""
 
-    core_schemas = [
+    CORE_SCHEMAS = [
         "benchmark_miner_registry.sql",
         "benchmark_miner_databases.sql",
         "benchmark_epochs.sql",
@@ -24,11 +17,18 @@ class MigrateSchema(BaseMigrateSchema):
         "benchmark_scores.sql",
     ]
 
-    miner_analytics_schemas = [
+    TOURNAMENT_SCHEMAS = [
+        "baseline_registry.sql",
+        "tournament_tournaments.sql",
+        "tournament_participants.sql",
+        "tournament_results.sql",
+    ]
+
+    MINER_ANALYTICS_SCHEMAS = [
         "miner_analytics_schema.sql",
     ]
 
-    miner_ml_schemas = [
+    MINER_ML_SCHEMAS = [
         "miner_ml_schema.sql",
     ]
 
@@ -36,15 +36,20 @@ class MigrateSchema(BaseMigrateSchema):
         return Path(__file__).parent / "schema"
 
     def run_core_migrations(self) -> None:
-        """Run core benchmark schema migrations."""
-        self.run_schemas_from_dir(self.core_schemas, self.get_project_schema_dir())
+        self.run_schemas_from_dir(self.CORE_SCHEMAS, self.get_project_schema_dir())
+
+    def run_tournament_migrations(self) -> None:
+        self.run_schemas_from_dir(self.TOURNAMENT_SCHEMAS, self.get_project_schema_dir())
 
     def run_miner_schema_migrations(self, image_type: str = 'analytics') -> None:
-        """Run miner-specific schema migrations based on image type."""
         if image_type == 'analytics':
-            self.run_schemas_from_dir(self.miner_analytics_schemas, self.get_project_schema_dir())
+            self.run_schemas_from_dir(self.MINER_ANALYTICS_SCHEMAS, self.get_project_schema_dir())
         else:
-            self.run_schemas_from_dir(self.miner_ml_schemas, self.get_project_schema_dir())
+            self.run_schemas_from_dir(self.MINER_ML_SCHEMAS, self.get_project_schema_dir())
+
+    def run_all(self) -> None:
+        self.run_core_migrations()
+        self.run_tournament_migrations()
 
 
 __all__ = ["MigrateSchema", "DATABASE_PREFIX"]
